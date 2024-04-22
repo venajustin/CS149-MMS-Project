@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <semaphore.h>
 
+static struct regions *memory;
 
 int shared_mem_init() {
     // generate key from filepath and id

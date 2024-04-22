@@ -3,12 +3,8 @@
 
 
 #include <time.h>
-
-// The size of the shared memory region
 #define MAX_MEM_SIZE (10000)
-// The max number of requests that can be requesting info
 #define MAX_REQUESTS ( 30 )
-// id and filepath used in the ftok function
 #define SHARED_ID ('M')
 char *shared_filepath = "/shared_memory_temp_file";
 
@@ -28,12 +24,10 @@ struct regions {
     struct mmap_table_entry mmap_table[MAX_REQUESTS];
 };
 
-
 int shared_mem_init();
 
 int first_byte();
 void set_mem(int c);
 
-static struct regions *memory;
 
 #endif
