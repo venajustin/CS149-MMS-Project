@@ -24,11 +24,26 @@ int main(int argc, char **argv) {
     }
 
     int psize = atoi(argv[1]);
+    if (psize < 8) {
+        printf("Minimum Physical: 8 Bytes\n");
+        return 1;
+    }
+    if (psize > MAX_MEM_SIZE - sizeof(struct regions)) {
+        printf("Maximum Physical: %d Bytes\n", MAX_MEM_SIZE - sizeof(struct regions));
+        return 1;
+    }
+
+
     int bsize = atoi(argv[2]);
-    bsize *= 8;
+    if (bsize % 8 != 0)
+        bsize += 8 - ( bsize % 8 );
 
     if (bsize < 8) {
-        printf("Minimum Boundary: 8 Bytes");
+        printf("Minimum Boundary: 8 Bytes\n");
+        return 1;
+    }
+    if (bsize > MAX_MEM_SIZE - sizeof(struct regions)) {
+        printf("Maximum Boundary: %d Bytes\n", MAX_MEM_SIZE - sizeof(struct regions));
         return 1;
     }
 
