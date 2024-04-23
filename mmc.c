@@ -51,7 +51,6 @@ int main(int argc, char **argv) {
     printf("Memory Size: %d, Boundary Size: %d\n", psize, bsize);
 
 
-
     // Creating the unique key from id and path
     key_t key = ftok(shared_filepath, SHARED_ID);
     
@@ -63,20 +62,47 @@ int main(int argc, char **argv) {
     
     memory->active_manager = 1;
 
-    char input[30];
-    input[0] = 0; // ensuring that it is null terminated
+    // Input size info
+    memory->allocated_size = psize;
+    memory->boundary_size = bsize;
 
-    scanf("%29s", input);
+    // defaults
+    memory->current_clients = 0;
+    memory->max_requests = psize / bsize;
+    
+
+    char buf[30];
+    buf[0] = 0; // ensuring that it is null terminated
+
+    char input;
+    char *filename;
+
+    scanf("%29[^\n]%*1[\n]", buf);
+    input = buf[0];
+    filename = &buf[2];
+    if (buf[1] != ' ') {
+        filename[0] = 0;
+    }
+
+
     while (strcmp(input, commands.exit) != 0) {
         if (strcmp(input, commands.dump) == 0) {
             printf("TODO: implement dump\n");
+            if (strlen(filename) > 0) {
+                printf("Filename: %s\n", filename);
+            }
         }
 
         if (strcmp(input, commands.display) == 0) {
             printf("TODO: implement display\n");
         }
 
-        scanf("%29s", input);
+        scanf("%29[^\n]%*1[\n]", input);
+        input = buf[0];
+        filename = &buf[2];
+        if (buf[1] != ' ') {
+            filename[0] = 0;
+        }   
     }
 
     // practically useless, since memory is destroyed anyway, but if another 
