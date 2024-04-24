@@ -71,38 +71,33 @@ int main(int argc, char **argv) {
     memory->max_requests = psize / bsize;
 
 
-    char buf[30];
-    buf[0] = 0; // ensuring that it is null terminated
+    char input[50];
 
-    char input;
-    char *filename;
-
-    scanf("%29[^\n]%*1[\n]", buf);
-    input = buf[0];
-    filename = &buf[2];
-    if (buf[1] != ' ') {
-        filename[0] = 0;
+    scanf("%49[^\n]%*1[\n]", input);
+    if (input[1] != ' ') {
+        input[2] = '\0';
     }
-
-
-    while (strcmp(&input, commands.exit) != 0) {
-        if (strcmp(&input, commands.dump) == 0) {
+    input[1] = '\0';
+    while (strcmp(input, commands.exit) != 0) {
+        if (strcmp(input, commands.dump) == 0) {
             printf("TODO: implement dump\n");
-            if (strlen(filename) > 0) {
-                printf("Filename: %s\n", filename);
+            if (strlen(&input[2]) > 0) {
+                printf("Filename: %s\n", &input[2]);
             }
         }
 
-        if (strcmp(&input, commands.display) == 0) {
+        if (strcmp(input, commands.display) == 0) {
             printf("TODO: implement display\n");
+            if (strlen(&input[2]) > 0) {
+                printf("Filename: %s\n", &input[2]);
+            }
         }
 
-        scanf("%29[^\n]%*1[\n]", input);
-        input = buf[0];
-        filename = &buf[2];
-        if (buf[1] != ' ') {
-            filename[0] = 0;
-        }   
+        scanf("%49[^\n]%*1[\n]", input);
+        if (input[1] != ' ') {
+            input[2] = '\0';
+        }
+        input[1] = '\0';
     }
 
     // practically useless, since memory is destroyed anyway, but if another 
