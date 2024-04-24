@@ -53,13 +53,13 @@ int main(int argc, char **argv) {
 
     // Creating the unique key from id and path
     key_t key = ftok(shared_filepath, SHARED_ID);
-    
+
     // creating shared memory and getting identifier
     int shmid = shmget(key, MAX_MEM_SIZE, 0666 | IPC_CREAT);
 
     // attaching to shared memory
     struct regions *memory = (struct regions*)shmat(shmid, (void*)0, 0);
-    
+
     memory->active_manager = 1;
 
     // Input size info
@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
     // defaults
     memory->current_clients = 0;
     memory->max_requests = psize / bsize;
-    
+
 
     char buf[30];
     buf[0] = 0; // ensuring that it is null terminated
@@ -85,15 +85,15 @@ int main(int argc, char **argv) {
     }
 
 
-    while (strcmp(input, commands.exit) != 0) {
-        if (strcmp(input, commands.dump) == 0) {
+    while (strcmp(&input, commands.exit) != 0) {
+        if (strcmp(&input, commands.dump) == 0) {
             printf("TODO: implement dump\n");
             if (strlen(filename) > 0) {
                 printf("Filename: %s\n", filename);
             }
         }
 
-        if (strcmp(input, commands.display) == 0) {
+        if (strcmp(&input, commands.display) == 0) {
             printf("TODO: implement display\n");
         }
 
