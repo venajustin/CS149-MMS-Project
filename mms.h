@@ -4,9 +4,17 @@
 
 #include <time.h>
 #define MAX_MEM_SIZE (10000)
-#define MAX_REQUESTS ( 1250 )
+#define MAX_REQUESTS ( 50 )
 #define SHARED_ID ('M')
 char *shared_filepath = "/shared_memory_temp_file";
+
+enum err_code{
+    OUT_OF_MEM = 100, 
+    MEM_TOO_SMALL = 101,
+    INVALID_DEST_ADDR = 102,
+    INVALID_CPY_ADDR = 103,
+    INVALID_MEM_ADDR = 104
+};
 
 struct mmap_table_entry {
     long client_pid;
@@ -28,8 +36,10 @@ struct regions {
 int shared_mem_init();
 int shared_mem_delete();
 
-int first_byte();
-void set_mem(int c);
-
+char* mms_malloc(int size, int* error_code);
+int mms_memset(char* dest_ptr, char c, int size);
+int mms_memcpy(char* dest_ptr, char* src_ptr, int size);
+int mms_print(char* src_ptr, int size);
+int mms_free ( char* mem_ptr );
 
 #endif

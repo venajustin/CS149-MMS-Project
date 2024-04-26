@@ -8,12 +8,8 @@ int main() {
         return 1;
     }
 
-    set_mem(222);
-	char readmem;
-    printf("Reading first byte\n");
-	readmem = first_byte();
-	printf("First Char %d\n", readmem);
-	return 0;
+    int err_code;
+    printf("%d\n", mms_malloc(0, &err_code));
 
 
 }

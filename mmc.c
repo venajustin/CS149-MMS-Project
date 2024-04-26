@@ -70,6 +70,8 @@ int main(int argc, char **argv) {
     memory->current_clients = 0;
     memory->max_requests = psize / bsize;
 
+    char* memory_region = (char*)memory + sizeof(struct regions);
+    char* boundary = memory_region + psize;
 
     char input[50];
 
@@ -80,7 +82,26 @@ int main(int argc, char **argv) {
     input[1] = '\0';
     while (strcmp(input, commands.exit) != 0) {
         if (strcmp(input, commands.dump) == 0) {
-            printf("TODO: implement dump\n");
+            
+            // Dumping the memory region into console
+            char* iterator = memory_region;
+            while (iterator < boundary - 32) {
+                printf("%X    ", iterator);
+                for (int i = 0; i < 32; i++) {
+                    printf("%X ", *iterator);
+                    iterator++;
+                }
+                printf("\n");
+            }
+            if (iterator < boundary) {
+                printf("%p    ", iterator);
+                while (iterator < boundary) {
+                    printf("%X ", *iterator);
+                    iterator++;
+                }
+                printf("\n");
+            }
+
             if (strlen(&input[2]) > 0) {
                 printf("Filename: %s\n", &input[2]);
             }
