@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     if (psize > MAX_MEM_SIZE - sizeof(struct regions)) {
-        printf("Maximum Physical: %d Bytes\n", MAX_MEM_SIZE - sizeof(struct regions));
+        printf("Maximum Physical: %ld Bytes\n", MAX_MEM_SIZE - sizeof(struct regions));
         return 1;
     }
 
@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     if (bsize > MAX_MEM_SIZE - sizeof(struct regions)) {
-        printf("Maximum Boundary: %d Bytes\n", MAX_MEM_SIZE - sizeof(struct regions));
+        printf("Maximum Boundary: %ld Bytes\n", MAX_MEM_SIZE - sizeof(struct regions));
         return 1;
     }
 
@@ -70,23 +70,28 @@ int main(int argc, char **argv) {
     memory->current_clients = 0;
     memory->max_requests = psize / bsize;
 
+    memory->next_pointer_offset = 0;
+    memory->total_entries = 0;
+
     char* memory_region = (char*)memory + sizeof(struct regions);
     char* boundary = memory_region + psize;
 
     char input[50];
 
+    // TODO: fix endless loop when only enter is pressed with no input
     scanf("%49[^\n]%*1[\n]", input);
     if (input[1] != ' ') {
         input[2] = '\0';
     }
     input[1] = '\0';
     while (strcmp(input, commands.exit) != 0) {
+
         if (strcmp(input, commands.dump) == 0) {
             
             // Dumping the memory region into console
             char* iterator = memory_region;
             while (iterator < boundary - 32) {
-                printf("%X    ", iterator);
+                printf("%p    ", iterator);
                 for (int i = 0; i < 32; i++) {
                     printf("%X ", *iterator);
                     iterator++;
@@ -102,14 +107,68 @@ int main(int argc, char **argv) {
                 printf("\n");
             }
 
+            // Printing to file if specified
             if (strlen(&input[2]) > 0) {
-                printf("Filename: %s\n", &input[2]);
+                FILE *fptr = fopen(&input[2], "w");
+                char* iterator = memory_region;
+                while (iterator < boundary - 32) {
+                    fprintf(fptr, "%p    ", iterator);
+                    for (int i = 0; i < 32; i++) {
+                        fprintf(fptr, "%X ", *iterator);
+                        iterator++;
+                    }
+                    fprintf(fptr, "\n");
+                }
+                if (iterator < boundary) {
+                    fprintf(fptr, "%p    ", iterator);
+                    while (iterator < boundary) {
+                        fprintf(fptr, "%X ", *iterator);
+                        iterator++;
+                    }
+                    fprintf(fptr, "\n");
+                }
+                fclose(fptr);
+
+                printf("Filename: %s written\n", &input[2]);
             }
         }
 
         if (strcmp(input, commands.display) == 0) {
-            printf("TODO: implement display\n");
+
+            printf("---------------------------------------------------------------------------\n");
+            printf("PID          | Request Size | Actual Size | Client Address | Last Reference\n");
+            printf("---------------------------------------------------------------------------\n");
+            for (int i = 0 ; i < memory->total_entries; i++) {
+                struct mmap_table_entry entry = memory->mmap_table[i];
+                if (entry.client_pid != 0) {
+                    printf("%-12ld | %-12d | %-11d | %-12p | %s\n", 
+                            entry.client_pid,
+                            entry.request_size,
+                            entry.actual_size,
+                            entry.client_address,
+                            "not available");
+                }
+            }
+
             if (strlen(&input[2]) > 0) {
+                FILE *fptr = fopen(&input[2], "w");
+
+                fprintf(fptr,"---------------------------------------------------------------------------\n");
+                fprintf(fptr,"PID          | Request Size | Actual Size | Client Address | Last Reference\n");
+                fprintf(fptr,"---------------------------------------------------------------------------\n");
+                for (int i = 0 ; i < memory->total_entries; i++) {
+                    struct mmap_table_entry entry = memory->mmap_table[i];
+                    if (entry.client_pid != 0) {
+                        fprintf(fptr,"%-12ld | %-12d | %-11d | %-12p | %s\n", 
+                                entry.client_pid,
+                                entry.request_size,
+                                entry.actual_size,
+                                entry.client_address,
+                                "not available");
+                    }
+                }
+
+                fclose(fptr);
                 printf("Filename: %s\n", &input[2]);
             }
         }
