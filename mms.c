@@ -49,14 +49,22 @@ int find_space(int size) {
 
         // finding the width of the hole
         int tmp_size = INT_MAX;
+        // check every client in the list
         for (int i = 0; i < memory->current_clients; i++) {
             if (memory->mmap_table[i].client_pid == 0) 
                 continue;
             int mem_entry_offset = memory->mmap_table[i].mem_offset;
+            // if the client is after the start of the hole
             if (mem_entry_offset > tmp_offset
+                    // and the start of the region is closest found yet
                     && mem_entry_offset - tmp_offset < tmp_size) {
+                // the width of the hole shrinks to the new size
                 tmp_size = mem_entry_offset - tmp_offset;
             }
+        }
+        // if this is the hole at the end, set the size 
+        if (tmp_offset + tmp_size > memory->allocated_size) {
+            tmp_size = memory->allocated_size - tmp_offset;
         }
         if (tmp_size > curr_size) {
             curr_size = tmp_size;
@@ -65,7 +73,7 @@ int find_space(int size) {
     if (tmp_offset >= boundary_offset) {
         return -1;
     }
-    if (curr_size < size) {
+    if (curr_size > size) {
         return -1;
     }
     return tmp_offset;        
@@ -87,7 +95,7 @@ char* mms_malloc(int size, int* error_code) {
     
 
     char* allocated_ptr = mem_region + memory->next_pointer_offset;
-    if (allocated_ptr >= end_mem) {
+    if (allocated_ptr >= end_mem || allocated_ptr + size >= end_mem) {
         enum err_code error = OUT_OF_MEM;
         *error_code = (int) error;
         return 0;
@@ -120,7 +128,7 @@ int verify_ownership(int offset, int size) {
         struct mmap_table_entry entry = memory->mmap_table[i];
         if (entry.client_pid == this_pid) {
             if (offset >= entry.mem_offset && offset < entry.mem_offset + entry.request_size) {
-                if (offset + size < entry.mem_offset + entry.request_size) {
+                if (offset + size <= entry.mem_offset + entry.request_size) {
                     return 0;
                 } else {
                     return 101;
