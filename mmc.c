@@ -141,12 +141,15 @@ int main(int argc, char **argv) {
             for (int i = 0 ; i < memory->total_entries; i++) {
                 struct mmap_table_entry entry = memory->mmap_table[i];
                 if (entry.client_pid != 0) {
+        
+                    char *ascii_time = ctime(&entry.last_reference); 
+
                     printf("%-12ld | %-12d | %-11d | %-12p | %s\n", 
                             entry.client_pid,
                             entry.request_size,
                             entry.actual_size,
                             entry.client_address,
-                            "not available");
+                            ascii_time);
                 }
             }
 
@@ -159,12 +162,15 @@ int main(int argc, char **argv) {
                 for (int i = 0 ; i < memory->total_entries; i++) {
                     struct mmap_table_entry entry = memory->mmap_table[i];
                     if (entry.client_pid != 0) {
+
+                        char *ascii_time = ctime(&entry.last_reference); 
+
                         fprintf(fptr,"%-12ld | %-12d | %-11d | %-12p | %s\n", 
                                 entry.client_pid,
                                 entry.request_size,
                                 entry.actual_size,
                                 entry.client_address,
-                                "not available");
+                                ascii_time);
                     }
                 }
 

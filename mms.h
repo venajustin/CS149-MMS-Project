@@ -22,7 +22,7 @@ struct mmap_table_entry {
     int actual_size;
     char *client_address;
     int mem_offset;
-    struct tm last_reference;
+    time_t last_reference;
 };
 
 struct regions {

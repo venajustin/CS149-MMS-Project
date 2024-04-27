@@ -14,19 +14,21 @@ int main() {
     char* my_ptr_1 = mms_malloc(10, &err);
     if (err == 100) {
         printf("Out of memory\n");
-        return 1;
     }
     printf("alloc 8 bytes\n");
     char* my_ptr_2 = mms_malloc(8, &err);
     if (err == 100) {
         printf("Out of memory\n");
-        return 1;
     }
     printf("alloc 8 bytes\n");
     char* my_ptr_3 = mms_malloc(8, &err);
     if (err == 100) {
         printf("Out of memory\n");
-        return 1;
+    }
+    printf("alloc 300 bytes\n");
+    char* my_ptr_4 = mms_malloc(300, &err);
+    if (err == 100) {
+        printf("Out of memory\n");
     }
 
 

@@ -32,6 +32,9 @@ int shared_mem_init() {
 
 // Finds an offset to place the requested size at, returns -1 if no space exists
 int find_space(int size) {
+
+    /// TODO: modify to take O(N) time and use "free space" entries
+
     int tmp_offset = 0;
     int curr_size = 0;
     int boundary_offset = memory->allocated_size;
@@ -84,24 +87,34 @@ int find_space(int size) {
 // Possible errors: 100
 char* mms_malloc(int size, int* error_code) {
     pid_t this_pid = getpid();
-   
+  
+    // TODO: verify room for another entry
+
+
+
     if (size < 1) {
         return 0;
     }
     int allocated_size = size;
-    if (allocated_size % 8 != 0) {
-        allocated_size += 8 - allocated_size % 8;
+    // if (allocated_size % 8 != 0) {
+    //     allocated_size += 8 - allocated_size % 8;
+    // }
+    if (allocated_size < memory->boundary_size) {
+        allocated_size = memory->boundary_size;
     }
     
 
     char* allocated_ptr = mem_region + memory->next_pointer_offset;
-    if (allocated_ptr >= end_mem || allocated_ptr + size >= end_mem) {
-        enum err_code error = OUT_OF_MEM;
-        *error_code = (int) error;
-        return 0;
-
+    if (allocated_ptr >= end_mem || allocated_ptr + allocated_size > end_mem) {
+        int found_offset = find_space(allocated_size);
+        if (found_offset == -1) {
+            enum err_code error = OUT_OF_MEM;
+            *error_code = (int) error;
+            return 0;
+        } else {
+            allocated_ptr = mem_region + found_offset;
+        }
     }
-    // TODO: implement filling holes in memory using find_space function
         
     memory->next_pointer_offset = (int)(allocated_ptr - mem_region) + allocated_size;
     struct mmap_table_entry new_entry;
@@ -110,8 +123,9 @@ char* mms_malloc(int size, int* error_code) {
     new_entry.actual_size = allocated_size;
     new_entry.client_address = allocated_ptr;
     new_entry.mem_offset = (int) ( allocated_ptr - mem_region );
-    //struct tm *time = localtime(NULL);
-    //new_entry.last_reference = *time;
+    time_t curr_time;
+    time(&curr_time);
+    new_entry.last_reference = curr_time;
 
     memory->mmap_table[memory->total_entries] = new_entry;
     memory->total_entries++;
@@ -122,7 +136,7 @@ char* mms_malloc(int size, int* error_code) {
 }
 
 // returns 0 for ownership or error code of error type
-int verify_ownership(int offset, int size) {
+int verify_ownership(int offset, int size, struct mmap_table_entry *table_entry) {
     pid_t this_pid = getpid();
     for (int i = 0; i < memory->total_entries; i++) {
         struct mmap_table_entry entry = memory->mmap_table[i];
@@ -143,13 +157,22 @@ int verify_ownership(int offset, int size) {
 // If successful, returns 0. Otherwise it returns an error code.
 // Possible errors: 101, 102
 int mms_memset(char* dest_ptr, char c, int size) {
-    
+    // pointer will hold the entry found by the ownership verification 
+    struct mmap_table_entry *found_entry;
+
     int dest_offset = dest_ptr - mem_region;
-    int err = verify_ownership(dest_offset, size); 
+    int err = verify_ownership(dest_offset, size, found_entry); 
     if (err == 0) {
         for (int i = 0; i < size; i++) {
             dest_ptr[i] = c;
         }
+       
+        // updating time since last modification
+        time_t curr_time;
+        time(&curr_time);
+        found_entry->last_reference = curr_time;
+
+
     } else {
         return  err;
     }
@@ -179,7 +202,23 @@ int mms_print(char* src_ptr, int size) {
 // If successful, returns 0.  Otherwise it returns an error code.
 // Possible errors: 104
 int mms_free ( char* mem_ptr ) {
-    return 0;
+    pid_t this_pid  = getpid();
+    int target_offset = mem_ptr - mem_region;
+    for (int i = 0; i < memory->total_entries; i++) {
+        struct mmap_table_entry curr_entry = memory->mmap_table[i];
+        if ( this_pid == curr_entry.client_pid ) {
+            if ( target_offset == curr_entry.mem_offset ) {
+                
+                memory->mmap_table[i].client_pid = 0;
+                    
+                return 0;
+            }
+        }
+    }
+    
+    enum err_code error = INVALID_MEM_ADDR;
+    return (int) error;
+
 }
 
 
