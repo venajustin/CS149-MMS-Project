@@ -5,6 +5,7 @@
 #include <sys/shm.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <stdio.h>
 
 static struct regions *memory;
 static char *mem_region;
@@ -96,12 +97,12 @@ char* mms_malloc(int size, int* error_code) {
         return 0;
     }
     int allocated_size = size;
-    // if (allocated_size % 8 != 0) {
-    //     allocated_size += 8 - allocated_size % 8;
-    // }
-    if (allocated_size < memory->boundary_size) {
-        allocated_size = memory->boundary_size;
+    if (allocated_size % memory->boundary_size != 0) {
+         allocated_size += memory->boundary_size - allocated_size % memory->boundary_size;
     }
+    //if (allocated_size < memory->boundary_size) {
+    //    allocated_size = memory->boundary_size;
+    //}
     
 
     char* allocated_ptr = mem_region + memory->next_pointer_offset;
@@ -191,6 +192,20 @@ int mms_memcpy(char* dest_ptr, char* src_ptr, int size) {
     struct mmap_table_entry *dest_entry;
     struct mmap_table_entry *src_entry;
 
+
+    /// specifications say "must allow for external buffer to be passed in as 
+    /// dest. (read only request)
+    /// Because this says read only, but also destination, it is unclear which
+    /// should be able to be external. I decided that this function would 
+    /// protect the shared memory, but will allow for external source or dest
+    /// buffers to be passed in. An error will be thrown if the src or dest 
+    /// cross a boundary of allocated memory, but any client pid is allowed as 
+    /// long as the buffer lies within one region.
+
+
+    // TODO: implement this ^ 
+    
+
     int err;
     err = verify_ownership(dest_offset, size, dest_entry);
     if (err != 0) {
@@ -219,8 +234,33 @@ int mms_memcpy(char* dest_ptr, char* src_ptr, int size) {
 // Possible errors: 103
 // Must allow external buffer to be passed in as src_ptr. (read only request)
 int mms_print(char* src_ptr, int size) {
+    int src_offset = src_ptr - mem_region;
+    struct mmap_table_entry * entry;
+    int err = verify_ownership(src_offset, size, entry);
+    if (err == 102) {
+        return 103;
+    }
+
+
+    // TODO: test, fix whatever it means by "allow external buffer"
+
+
+
+    if (size == 0) {
+        while (*src_ptr != 0) {
+            printf("%2hhX ", *src_ptr);
+            src_ptr++;
+        }
+    } else {
+        for (int i = 0; i < size; i++) {
+            printf("%2hhX ", src_ptr[i]);
+        }
+    }
+    printf("\n");
     return 0;
+
 }
+
 
 
 // Free the allocated memory.
