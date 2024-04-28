@@ -185,7 +185,32 @@ int mms_memset(char* dest_ptr, char c, int size) {
 // Possible errors: 101, 103
 // Must allow external buffer to be passed in as dest_ptr. (read only request)
 int mms_memcpy(char* dest_ptr, char* src_ptr, int size) {
+    int dest_offset = dest_ptr - mem_region;
+    int src_offset = src_ptr - mem_region;
+
+    struct mmap_table_entry *dest_entry;
+    struct mmap_table_entry *src_entry;
+
+    int err;
+    err = verify_ownership(dest_offset, size, dest_entry);
+    if (err != 0) {
+        if (err == 102)
+                return 103;
+        return err;
+
+    }
+    err = verify_ownership(src_offset, size, src_entry);
+    if (err != 0) {
+        if (err == 102) 
+                return 103;
+        return err;
+    }
+
+    for (int i = 0; i < size; i++) {
+        dest_ptr[i] = src_ptr[i];
+    }
     return 0;
+
 }
 
 // Print the number of characters in hex format to STDOUT.

@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
             while (iterator < boundary - 32) {
                 printf("%p    ", iterator);
                 for (int i = 0; i < 32; i++) {
-                    printf("%X ", *iterator);
+                    printf("%.2hhX ", *iterator);
                     iterator++;
                 }
                 printf("\n");
@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
             if (iterator < boundary) {
                 printf("%p    ", iterator);
                 while (iterator < boundary) {
-                    printf("%X ", *iterator);
+                    printf("%.2hhX ", *iterator);
                     iterator++;
                 }
                 printf("\n");
@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
                 while (iterator < boundary - 32) {
                     fprintf(fptr, "%p    ", iterator);
                     for (int i = 0; i < 32; i++) {
-                        fprintf(fptr, "%X ", *iterator);
+                        fprintf(fptr, "%.2hhX ", *iterator);
                         iterator++;
                     }
                     fprintf(fptr, "\n");
@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
                 if (iterator < boundary) {
                     fprintf(fptr, "%p    ", iterator);
                     while (iterator < boundary) {
-                        fprintf(fptr, "%X ", *iterator);
+                        fprintf(fptr, "%.2hhX ", *iterator);
                         iterator++;
                     }
                     fprintf(fptr, "\n");

@@ -118,6 +118,54 @@ int main() {
     if (err == 102) {
         printf("Invalid destination address\n");
     }
+
+    
+
+
+    printf("deleting region 2\n");
+    err = mms_free(my_ptr_2);
+    if (err == 104) {
+        printf("Invalid memory address\n");
+    }
+
+    printf("trying to fill region 2 with 'Z', should error\n");
+    err = mms_memset(my_ptr_2, 'Z', 8);
+    if (err == 101) {
+        printf("Memory too small\n");
+    }
+    if (err == 102) {
+        printf("invalid memory address\n");
+    }
+
+    
+
+    printf("copying from region 1 to region 4\n");
+    err = mms_memcpy(my_ptr_4, my_ptr_1, 8);
+    if (err == 101) {
+        printf("Memory too small\n");
+    }
+    if (err == 103) {
+        printf("invalid memory address\n");
+    }
+
+    printf("copying from invalid location to region 4\n");
+    err = mms_memcpy(my_ptr_4, my_ptr_1 - 20, 8);
+    if (err == 101) {
+        printf("Memory too small\n");
+    }
+    if (err == 103) {
+        printf("invalid memory address\n");
+    }
+ 
+    printf("copying from region 1 to invalid region \n");
+    err = mms_memcpy(my_ptr_4+ 400, my_ptr_1, 8);
+    if (err == 101) {
+        printf("Memory too small\n");
+    }
+    if (err == 103) {
+        printf("invalid memory address\n");
+    }   
+
 }
 
 
