@@ -79,10 +79,7 @@ char* mms_malloc(int size, int* error_code) {
                 // the offset into memory region that the new space will be allocated
                 allocated_offset = entry_ptr->mem_offset;
 
-                // decrease the size of the free space (from the front)
-                entry_ptr->actual_size -= allocated_size;
-                entry_ptr->mem_offset += allocated_size;
-                
+               
                 if (entry_ptr->actual_size == 0) {
                     
                     // the hole has been completely filled
@@ -113,6 +110,12 @@ char* mms_malloc(int size, int* error_code) {
 
     // filling in the new table entry
     if (err == 0) { 
+
+         // decrease the size of the free space (from the front)
+        entry_ptr->actual_size -= allocated_size;
+        entry_ptr->mem_offset += allocated_size;
+        
+
         allocated_ptr = mem_region + allocated_offset;
         new_entry->client_pid = this_pid;
         new_entry->request_size = size;
@@ -212,19 +215,6 @@ int mms_memcpy(char* dest_ptr, char* src_ptr, int size) {
     struct mmap_table_entry *src_entry;
 
 
-    /// specifications say "must allow for external buffer to be passed in as 
-    /// dest. (read only request)
-    /// Because this says read only, but also destination, it is unclear which
-    /// should be able to be external. I decided that this function would 
-    /// protect the shared memory, but will allow for external source or dest
-    /// buffers to be passed in. An error will be thrown if the src or dest 
-    /// cross a boundary of allocated memory, but any client pid is allowed as 
-    /// long as the buffer lies within one region.
-
-
-    // TODO: implement this ^ 
-    
-
     int err;
     err = verify_ownership(dest_offset, size, &dest_entry);
     if (err != 0) {
@@ -278,8 +268,6 @@ int mms_print(char* src_ptr, int size) {
         err = 103;
     }
 
-
-    // TODO: test, fix whatever it means by "allow external buffer"
 
 
     if (err == 0) {
@@ -350,7 +338,7 @@ int mms_free ( char* mem_ptr ) {
 
                 // timestamp, exectuable name, pid, function name, return value (error), memory pointer 
                 fprintf(log_file, " %14s | %14s | %14d | %s %d %p\n", 
-                        time_string, prog_name, this_pid, "mms_print", 0, mem_ptr ); 
+                        time_string, prog_name, this_pid, "mms_free", 0, mem_ptr ); 
                 fclose(log_file);
 
                    
@@ -363,7 +351,7 @@ int mms_free ( char* mem_ptr ) {
 
     // timestamp, exectuable name, pid, function name, return value (error), memory pointer
     fprintf(log_file, " %14s | %14s | %14d | %s %d %p\n", 
-            time_string, prog_name, this_pid, "mms_print", (int)error, mem_ptr); 
+            time_string, prog_name, this_pid, "mms_free", (int)error, mem_ptr); 
     fclose(log_file);
 
    

@@ -31,7 +31,6 @@ struct regions {
     int boundary_size;
     int current_clients;
     int max_requests;
-    int next_pointer_offset;
     int total_entries;
     struct mmap_table_entry mmap_table[MAX_REQUESTS];
 };

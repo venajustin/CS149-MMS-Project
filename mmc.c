@@ -71,7 +71,6 @@ int main(int argc, char **argv) {
     memory->current_clients = 0;
     memory->max_requests = psize / bsize;
 
-    memory->next_pointer_offset = 0; // TODO: remove
     // The number of entries in the mapping table 
     memory->total_entries = 1;
     // the initial free space entry
