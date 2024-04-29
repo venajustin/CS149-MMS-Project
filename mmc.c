@@ -89,8 +89,7 @@ int main(int argc, char **argv) {
 
     char input[50];
 
-    // TODO: fix endless loop when only enter is pressed with no input
-    scanf("%49[^\n]%*1[\n]", input);
+    scanf("%49[^\n]", input);
     if (input[1] != ' ') {
         input[2] = '\0';
     }
@@ -189,8 +188,8 @@ int main(int argc, char **argv) {
                 printf("Filename: %s\n", &input[2]);
             }
         }
-
-        scanf("%49[^\n]%*1[\n]", input);
+        input[0] = 'A';
+        scanf("%*[\n]%49[^\n]", input);
         if (input[1] != ' ') {
             input[2] = '\0';
         }
