@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    printf("Allocating static memory.\n");
+    printf("Allocating shared memory:\n");
     printf("Memory Size: %d, Boundary Size: %d\n", psize, bsize);
 
 
@@ -60,6 +60,7 @@ int main(int argc, char **argv) {
     // attaching to shared memory
     struct regions *memory = (struct regions*)shmat(shmid, (void*)0, 0);
 
+    // used to signify that a memory manager has initialized the shared region
     memory->active_manager = 1;
 
     // Input size info
@@ -70,11 +71,18 @@ int main(int argc, char **argv) {
     memory->current_clients = 0;
     memory->max_requests = psize / bsize;
 
-    memory->next_pointer_offset = 0;
-    memory->total_entries = 0;
+    memory->next_pointer_offset = 0; // TODO: remove
+    // The number of entries in the mapping table 
+    memory->total_entries = 1;
+    // the initial free space entry
+    struct mmap_table_entry *new_entry = memory->mmap_table;
+    new_entry->client_pid = 0;
+    new_entry->actual_size = psize;
+    new_entry->mem_offset = 0;    
+
 
     char* memory_region = (char*)memory + sizeof(struct regions);
-    char* boundary = memory_region + psize;
+    char* end_region = memory_region + psize;
 
 
     // Tries to read mms.log, if it doesn't exist, it creates it and writes header
@@ -100,7 +108,7 @@ int main(int argc, char **argv) {
             
             // Dumping the memory region into console
             char* iterator = memory_region;
-            while (iterator < boundary - 32) {
+            while (iterator < end_region - 32) {
                 printf("%p    ", iterator);
                 for (int i = 0; i < 32; i++) {
                     printf("%.2hhX ", *iterator);
@@ -108,9 +116,9 @@ int main(int argc, char **argv) {
                 }
                 printf("\n");
             }
-            if (iterator < boundary) {
+            if (iterator < end_region) {
                 printf("%p    ", iterator);
-                while (iterator < boundary) {
+                while (iterator < end_region) {
                     printf("%.2hhX ", *iterator);
                     iterator++;
                 }
@@ -121,7 +129,7 @@ int main(int argc, char **argv) {
             if (strlen(&input[2]) > 0) {
                 FILE *fptr = fopen(&input[2], "w");
                 char* iterator = memory_region;
-                while (iterator < boundary - 32) {
+                while (iterator < end_region - 32) {
                     fprintf(fptr, "%p    ", iterator);
                     for (int i = 0; i < 32; i++) {
                         fprintf(fptr, "%.2hhX ", *iterator);
@@ -129,9 +137,9 @@ int main(int argc, char **argv) {
                     }
                     fprintf(fptr, "\n");
                 }
-                if (iterator < boundary) {
+                if (iterator < end_region) {
                     fprintf(fptr, "%p    ", iterator);
-                    while (iterator < boundary) {
+                    while (iterator < end_region) {
                         fprintf(fptr, "%.2hhX ", *iterator);
                         iterator++;
                     }

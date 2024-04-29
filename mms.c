@@ -39,71 +39,21 @@ int shared_mem_init(char * executable_name) {
     return 0;
 } 
 
-// Finds an offset to place the requested size at, returns -1 if no space exists
-int find_space(int size) {
-
-    /// TODO: modify to take O(N) time and use "free space" entries
-
-    int tmp_offset = 0;
-    int curr_size = 0;
-    int boundary_offset = memory->allocated_size;
-    while(curr_size < size || tmp_offset >= boundary_offset) {
-        // keeps jumping the tmp_offset pointer untill it reaches an unnallocated byte
-        for (int i = 0; i < memory->current_clients; i++) {
-            if (memory->mmap_table[i].client_pid == 0) 
-                continue;
-            int mem_entry_offset = memory->mmap_table[i].mem_offset;
-            int mem_entry_end = memory->mmap_table[i].actual_size + mem_entry_offset;
-            if (tmp_offset >= mem_entry_offset && tmp_offset < mem_entry_end) {
-                tmp_offset = mem_entry_end;
-            }
-        }
-
-        // finding the width of the hole
-        int tmp_size = INT_MAX;
-        // check every client in the list
-        for (int i = 0; i < memory->current_clients; i++) {
-            if (memory->mmap_table[i].client_pid == 0) 
-                continue;
-            int mem_entry_offset = memory->mmap_table[i].mem_offset;
-            // if the client is after the start of the hole
-            if (mem_entry_offset > tmp_offset
-                    // and the start of the region is closest found yet
-                    && mem_entry_offset - tmp_offset < tmp_size) {
-                // the width of the hole shrinks to the new size
-                tmp_size = mem_entry_offset - tmp_offset;
-            }
-        }
-        // if this is the hole at the end, set the size 
-        if (tmp_offset + tmp_size > memory->allocated_size) {
-            tmp_size = memory->allocated_size - tmp_offset;
-        }
-        if (tmp_size > curr_size) {
-            curr_size = tmp_size;
-        }
-    }
-    if (tmp_offset >= boundary_offset) {
-        return -1;
-    }
-    if (curr_size > size) {
-        return -1;
-    }
-    return tmp_offset;        
-}
-
 // Allocate a piece of memory given the input size.
 // If successful, returns a valid pointer. Otherwise it returns NULL (0) and set the error_code.
 // Possible errors: 100
 char* mms_malloc(int size, int* error_code) {
     pid_t this_pid = getpid();
+    enum err_code err = 0;
+    time_t curr_time;
+    time(&curr_time);
   
-    // TODO: verify room for another entry
 
-
-
+    // invalid size request
     if (size < 1) {
         return 0;
     }
+    // expanding the allocated size up to the nearest multiple of boundary size
     int allocated_size = size;
     if (allocated_size % memory->boundary_size != 0) {
          allocated_size += memory->boundary_size - allocated_size % memory->boundary_size;
@@ -112,29 +62,67 @@ char* mms_malloc(int size, int* error_code) {
     //    allocated_size = memory->boundary_size;
     //}
     
+    // -1  = no valid region found
+    int allocated_offset = -1;
 
-    char* allocated_ptr = mem_region + memory->next_pointer_offset;
-    if (allocated_ptr >= end_mem || allocated_ptr + allocated_size > end_mem) {
-        int found_offset = find_space(allocated_size);
-        if (found_offset == -1) {
-            enum err_code error = OUT_OF_MEM;
-            *error_code = (int) error;
-            return 0;
+
+    struct mmap_table_entry *entry_ptr = memory->mmap_table;
+    struct mmap_table_entry *end_table = entry_ptr + memory->total_entries;
+    // default location for a new entry is the end of the entry list
+    struct mmap_table_entry *new_entry = end_table;
+    while (entry_ptr < end_table) {
+        
+        if (entry_ptr->client_pid == 0) {
+            if (entry_ptr->actual_size >= allocated_size) {
+                // The free space fits the allocated buffer
+
+                // the offset into memory region that the new space will be allocated
+                allocated_offset = entry_ptr->mem_offset;
+
+                // decrease the size of the free space (from the front)
+                entry_ptr->actual_size -= allocated_size;
+                entry_ptr->mem_offset += allocated_size;
+                
+                if (entry_ptr->actual_size == 0) {
+                    
+                    // the hole has been completely filled
+                    // this entry can be used to hold the new region
+                    new_entry = entry_ptr;
+                }
+                
+                break;
+            }
+        }
+        entry_ptr++;
+    }
+    if (allocated_offset == -1 ) {
+        err = OUT_OF_MEM;
+    }
+
+
+    if (new_entry == end_table) {
+        if (memory->total_entries + 1 > memory->max_requests) {
+            err = OUT_OF_MEM;
         } else {
-            allocated_ptr = mem_region + found_offset;
+            memory->total_entries++;
         }
     }
-        
-    memory->next_pointer_offset = (int)(allocated_ptr - mem_region) + allocated_size;
-    struct mmap_table_entry new_entry;
-    new_entry.client_pid = this_pid;
-    new_entry.request_size = size;
-    new_entry.actual_size = allocated_size;
-    new_entry.client_address = allocated_ptr;
-    new_entry.mem_offset = (int) ( allocated_ptr - mem_region );
-    time_t curr_time;
-    time(&curr_time);
-    new_entry.last_reference = curr_time;
+
+
+    char* allocated_ptr = 0;
+
+    // filling in the new table entry
+    if (err == 0) { 
+        allocated_ptr = mem_region + allocated_offset;
+        new_entry->client_pid = this_pid;
+        new_entry->request_size = size;
+        new_entry->actual_size = allocated_size;
+        new_entry->client_address = allocated_ptr;
+        new_entry->mem_offset = allocated_offset;
+        new_entry->last_reference = curr_time;
+
+        memory->current_clients++;
+    }
 
     // formatting timestamp for log
     struct tm *curr_time_info = localtime(&curr_time);
@@ -148,11 +136,7 @@ char* mms_malloc(int size, int* error_code) {
             time_string, prog_name, this_pid, "mms_malloc", allocated_ptr, size, *error_code); 
     fclose(log_file);
 
-    memory->mmap_table[memory->total_entries] = new_entry;
-    memory->total_entries++;
-    memory->current_clients++;
-    memory->allocated_size++;
-
+    *error_code = (int) err;
     return allocated_ptr; 
 }
 
