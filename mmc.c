@@ -76,6 +76,17 @@ int main(int argc, char **argv) {
     char* memory_region = (char*)memory + sizeof(struct regions);
     char* boundary = memory_region + psize;
 
+
+    // Tries to read mms.log, if it doesn't exist, it creates it and writes header
+    FILE * mms_log = fopen("./mms.log", "r");
+    if (mms_log == NULL) {
+        mms_log = fopen("./mms.log", "w");
+        fprintf(mms_log, "   Timestamp    |  Program Name  |   Process ID   |   Operation\n");
+        fclose(mms_log);
+    }
+
+
+
     char input[50];
 
     // TODO: fix endless loop when only enter is pressed with no input

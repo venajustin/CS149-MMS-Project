@@ -36,7 +36,7 @@ struct regions {
     struct mmap_table_entry mmap_table[MAX_REQUESTS];
 };
 
-int shared_mem_init();
+int shared_mem_init(char * executable_name);
 int shared_mem_delete();
 
 char* mms_malloc(int size, int* error_code);

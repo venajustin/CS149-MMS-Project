@@ -2,9 +2,11 @@
 #include <string.h>
 #include "mms.h"
 
-int main() {
+int main(int argc, char **argv) {
+
+
     printf("Initializing shared memory...\n");
-    if (shared_mem_init() == 1) {
+    if (shared_mem_init(argv[0]) == 1) {
         printf("Error initializing shared memory, make sure manager is running\n");
         return 1;
     }
