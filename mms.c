@@ -215,6 +215,16 @@ int mms_memcpy(char* dest_ptr, char* src_ptr, int size) {
     struct mmap_table_entry *src_entry;
 
 
+    /// specifications say "must allow for external buffer to be passed in as 
+    /// dest. (read only request)
+    /// Because this says read only, but also destination, it is unclear which
+    /// should be able to be external. I decided that this function would 
+    /// protect the shared memory, but will allow for external source or dest
+    /// buffers to be passed in. An error will be thrown if the src or dest 
+    /// cross a boundary of allocated memory, but any client pid is allowed as 
+    /// long as the buffer lies within one region.
+
+
     int err;
     err = verify_ownership(dest_offset, size, &dest_entry);
     if (err != 0) {
@@ -223,12 +233,29 @@ int mms_memcpy(char* dest_ptr, char* src_ptr, int size) {
         return err;
 
     }
-    err = verify_ownership(src_offset, size, &src_entry);
-    if (err != 0) {
-        if (err == 102) 
-                err = 103;
-        return err;
+    
+    // verifying source buffer
+    if ((void*) src_ptr >= (void*) memory && (void*) src_ptr < (void*) mem_region + memory->allocated_size) {
+        err = 103;
+        for (int i = 0; i < memory->total_entries;i++) {
+            if (src_offset >= memory->mmap_table[i].mem_offset &&
+                    src_offset < memory->mmap_table[i].mem_offset + memory->mmap_table[i].request_size) {
+                if (src_offset + size < 
+                        memory->mmap_table[i].mem_offset + 
+                        memory->mmap_table[i].request_size) {
+                
+                    err = 0;
+                }
+                break;
+            }
+        }
     }
+    //err = verify_ownership(src_offset, size, &src_entry);
+    //if (err != 0) {
+    //    if (err == 102) 
+     //           err = 103;
+      //  return err;
+    //}
     
     if (err == 0) {
         for (int i = 0; i < size; i++) {
@@ -269,6 +296,8 @@ int mms_print(char* src_ptr, int size) {
     }
 
 
+    // TODO: "allow external buffer"
+    
 
     if (err == 0) {
         if (size == 0) {
