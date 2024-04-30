@@ -6,9 +6,10 @@
 #define MAX_MEM_SIZE (10000)
 #define MAX_REQUESTS ( 50 )
 #define SHARED_ID ('M')
-char *shared_filepath = "/shared_memory_temp_file";
+#define SHARED_FILEPATH "/shared_memory_temp_file"
 
 enum err_code{
+    NO_ERROR = 0,
     OUT_OF_MEM = 100, 
     MEM_TOO_SMALL = 101,
     INVALID_DEST_ADDR = 102,
