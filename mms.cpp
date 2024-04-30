@@ -1,5 +1,6 @@
 #include "mms.h"
 #include <alloca.h>
+#include <cstddef>
 #include <limits.h>
 #include <string.h>
 #include <sys/ipc.h>
@@ -214,48 +215,60 @@ int mms_memcpy(char* dest_ptr, char* src_ptr, int size) {
     struct mmap_table_entry *dest_entry;
     struct mmap_table_entry *src_entry;
 
-
-    /// specifications say "must allow for external buffer to be passed in as 
-    /// dest. (read only request)
-    /// Because this says read only, but also destination, it is unclear which
-    /// should be able to be external. I decided that this function would 
-    /// protect the shared memory, but will allow for external source or dest
-    /// buffers to be passed in. An error will be thrown if the src or dest 
-    /// cross a boundary of allocated memory, but any client pid is allowed as 
-    /// long as the buffer lies within one region.
-
-
     int err;
-    err = verify_ownership(dest_offset, size, &dest_entry);
-    if (err != 0) {
-        if (err == 102)
-                err = 103;
-        return err;
 
-    }
-    
-    // verifying source buffer
+    // src_ptr or dest_ptr can be from inside or outside of the memory region
+    // if either is inside or overlapping the shared memory, it must be completely contained within an owned buffer
     if ( src_ptr >= (char*) memory && src_ptr < mem_region + memory->allocated_size) {
-        err = 103;
-        for (int i = 0; i < memory->total_entries;i++) {
-            if (src_offset >= memory->mmap_table[i].mem_offset &&
-                    src_offset < memory->mmap_table[i].mem_offset + memory->mmap_table[i].request_size) {
-                if (src_offset + size < 
-                        memory->mmap_table[i].mem_offset + 
-                        memory->mmap_table[i].request_size) {
-                
-                    err = 0;
-                }
-                break;
-            }
+        err = verify_ownership(src_offset, size, &src_entry);
+        if (err == 102) {
+            err = 103; // because I reuse the same verify_ownership function that returns 102 as the error for out of region
+        }
+    } else {
+        // a pointer could be from before the region and overlap it.
+        if ( src_ptr + size >= (char*) memory && src_ptr + size < mem_region + memory->allocated_size) {
+            err = 103; 
         }
     }
+
+    if ( dest_ptr >= (char*) memory && dest_ptr < mem_region + memory->allocated_size) {
+        err = verify_ownership(dest_offset, size, &dest_entry);
+        if (err == 102) {
+            err = 103; // because I reuse the same verify_ownership function that returns 102 as the error for out of region
+        }
+    } else {
+        // a pointer could be from before the region and overlap it.
+        if ( dest_ptr + size >= (char*) memory && dest_ptr + size < mem_region + memory->allocated_size) {
+            err = 103; 
+        }
+    }
+
+    /// OLD CODE
+    /// ////////////////
+    // verifying source buffer
+    // if ( src_ptr >= (char*) memory && src_ptr < mem_region + memory->allocated_size) {
+    //     err = 103;
+    //     for (int i = 0; i < memory->total_entries;i++) {
+    //         if (src_offset >= memory->mmap_table[i].mem_offset &&
+    //                 src_offset < memory->mmap_table[i].mem_offset + memory->mmap_table[i].request_size) {
+    //             if (src_offset + size < 
+    //                     memory->mmap_table[i].mem_offset + 
+    //                     memory->mmap_table[i].request_size) {
+    //             
+    //                err = 0;
+    //          }
+    //            break;
+    //        }
+    //    }
+    //}
+    ///////////////////////////
     //err = verify_ownership(src_offset, size, &src_entry);
     //if (err != 0) {
     //    if (err == 102) 
      //           err = 103;
       //  return err;
     //}
+    ///////////////////////
     
     if (err == 0) {
         for (int i = 0; i < size; i++) {
@@ -290,50 +303,74 @@ int mms_memcpy(char* dest_ptr, char* src_ptr, int size) {
 int mms_print(char* src_ptr, int size) {
     int src_offset = src_ptr - mem_region;
     struct mmap_table_entry * entry;
-    int err = verify_ownership(src_offset, size, &entry);
-    if (err == 102) {
-        err = 103;
+    entry = NULL;
+    int err = 0;
+    // Following instructions from in class
+    // An external pointer that does not fall within the shared memory will attempt to be printed as normal.
+    // A pointer from within the region must be within the bounds of a region owned by the calling process
+    if ( src_ptr >= (char*) memory && src_ptr < mem_region + memory->allocated_size) {
+        err = verify_ownership(src_offset, size, &entry);
+        if (err == 102) {
+            err = 103;// because I reuse the same verify_ownership function that returns 102 as the error for out of region
+        }
+    } else {
+        // a pointer could be from before the region and overlap it.
+        if ( src_ptr + size >= (char*) memory && src_ptr + size < mem_region + memory->allocated_size) {
+            err = 103;
+        }
     }
-
-
-    // TODO: "allow external buffer"
-    
 
     if (err == 0) {
         if (size == 0) {
             while (*src_ptr != 0) {
                 printf("%2hhX ", *src_ptr);
                 src_ptr++;
+
+
+                // this could be used to read private data so we have to check every time
+                if (entry == NULL) {
+                    // this is an external region
+                    if (src_ptr >= (char*) memory && src_ptr < mem_region + memory->allocated_size) {
+                        err = 103;
+                        break;
+                    }
+                } else {
+                    // this is a print of an allocated region (that is verified owned by this client)
+                    if (src_ptr >= mem_region + entry->mem_offset + entry->request_size) {
+                        err = 103;
+                        break;
+                    }
+                }
             }
         } else {
             for (int i = 0; i < size; i++) {
                 printf("%2hhX ", src_ptr[i]);
             }
         }
+        printf("\n");
     }
 
-    printf("\n");
 
-
-    pid_t this_pid = getpid();
-    time_t curr_time;
-    time(&curr_time);
-    // formatting timestamp for log
-    struct tm *curr_time_info = localtime(&curr_time);
-    char time_string[15];
-    strftime(time_string, 15, "%Y%m%d%H%M%S", curr_time_info);
+    // instructions in class said that logging "read only functions" is not nessessary
+    // pid_t this_pid = getpid();
+    // time_t curr_time;
+    // time(&curr_time);
+    ////  formatting timestamp for log
+    // struct tm *curr_time_info = localtime(&curr_time);
+    // char time_string[15];
+    // strftime(time_string, 15, "%Y%m%d%H%M%S", curr_time_info);
     
-    //  logging operation
-    FILE *log_file = fopen("./mms.log", "a");
+    ////   logging operation
+    // FILE *log_file = fopen("./mms.log", "a");
     // timestamp, exectuable name, pid, function name, return value (error), src, size 
-    fprintf(log_file, " %14s | %14s | %14d | %s %d %p, %d\n", 
-            time_string, prog_name, this_pid, "mms_print", err, src_ptr, size); 
-    fclose(log_file);
+    // fprintf(log_file, " %14s | %14s | %14d | %s %d %p, %d\n", 
+    //         time_string, prog_name, this_pid, "mms_print", err, src_ptr, size); 
+    // fclose(log_file);
 
 
 
 
-    return 0;
+    return err;
 
 }
 
