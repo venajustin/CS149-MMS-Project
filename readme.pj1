@@ -1,0 +1,30 @@
+CS 149 - Operating Systems
+Project 1 - Memory Managment System
+Justin Greatorex
+4 / 30 / 2024
+
+compiled on gcc/gdb docker image
+Running on Windows 11 x86 AMD Ryzen CPU
+
+Assumptions:
+  - Minimum boundary size specifies the increments of which the allocated regions must be multiples of.
+    Examples:
+        - boundary 16, region requested of size 6, actual allocated region size 16
+        - boundary 16, region requested of size 20, actual allocated region size 32
+  - All times given in the YYYYMMDDHHMMSS format
+  - "external buffer" in memcpy can be the source or the destination
+        - if either is internal, it must be owned by the calling process
+        - copying from internal to external does not log to mms.log
+  - "external buffer" in mms_print must be from outside memory region. 
+        - If internal buffer, must be owned by calling process.
+  - Calling "mms_free" on a pointer within an allocated region will return error 
+
+Notes:
+  - given tests do not make sence or test project specifications
+      - my code does not pass these tests as they try to mms_memcpy into regions that have not been allocated
+  - To test my code:
+      - mms_init() will return a pointer, or NULL if an mmc console has not been started
+      - the pointer returned is to the start of the shared memory region
+      - it should not be used and is only for debugging purposes
+
+

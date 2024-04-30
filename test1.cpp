@@ -7,12 +7,12 @@ int main(int argc, char **argv) {
 
 
     printf("Initializing shared memory...\n");
-    if (shared_mem_init(argv[0]) == 1) {
+    if (mms_init() == NULL) {
         printf("Error initializing shared memory, make sure manager is running\n");
         return 1;
     }
  
-    printf("Continue to type any character and Press Enter to continue through test suite\n");
+    printf("Type any character and Press Enter to continue, continue this to proceed through each test\n");
     char input[50];
 
     scanf("%s", input);
@@ -172,6 +172,13 @@ int main(int argc, char **argv) {
 
     printf("\n-> testing mms_memcpy:\n");
 
+    printf("Zone 1 and zone 3: \n");
+    err = mms_print(my_ptr_1, 10);
+    if (err != 0 ) printf("ERROR\n");
+    err = mms_print(my_ptr_3, 8);
+    if (err != 0 ) printf("ERROR\n");
+    printf("\n");
+
     printf("copying from region 1 to region 3\n");
     err = mms_memcpy(my_ptr_3, my_ptr_1, 8);
     if (err == 101) {
@@ -180,8 +187,12 @@ int main(int argc, char **argv) {
     if (err == 103) {
         printf("ERROR: invalid memory address\n");
     }
+    printf("region 3:\n");
+    err = mms_print(my_ptr_3, 8);
+    if (err != 0 ) printf("ERROR\n");
+    printf("\n");
 
-    printf("copying from invalid location to region 4\n");
+    printf("copying from invalid location to region 3\n");
     err = mms_memcpy(my_ptr_3, my_ptr_1 - 20, 8);
     if (err == 101) {
         printf("ERROR: Memory too small\n");
@@ -189,7 +200,11 @@ int main(int argc, char **argv) {
     if (err == 103) {
         printf("ERROR: invalid memory address\n");
     }
- 
+    printf("region 3:\n");
+    err = mms_print(my_ptr_3, 8);
+    if (err != 0 ) printf("ERROR\n");
+    printf("\n");
+
     printf("copying from region 1 to invalid region \n");
     err = mms_memcpy(my_ptr_1 - 3 , my_ptr_1, 8);
     if (err == 101) {
@@ -203,6 +218,11 @@ int main(int argc, char **argv) {
 
     // extern buffer used in memcpy and print
     char* buff = (char*) malloc(32);
+    printf("region 1 and 3 reset to 0x11 and 0x33:\n");
+    err = mms_memset(my_ptr_1, 0x11, 10);
+    if (err != 0 ) printf("ERROR\n");
+    err = mms_memset(my_ptr_3, 0x33, 8);
+    if (err != 0 ) printf("ERROR\n");
 
     printf("copying region 1 into buffer\n");
     err = mms_memcpy(buff, my_ptr_1, 10);
@@ -211,14 +231,26 @@ int main(int argc, char **argv) {
     printf("copying 8 bytes of buffer into region 3\n");
     err = mms_memcpy(my_ptr_3, buff, 8);
     if (err == 103) printf("ERROR: invalid pointer\n");
+    printf("region 3:\n");
+    err = mms_print(my_ptr_3, 8);
+    if (err != 0 ) printf("ERROR\n");
+    printf("\n");
 
     printf("setting 3 bytes of region 3 to  0x97\n");
     err = mms_memset(my_ptr_3 + 1, 0x97, 3);
     if (err != 0) printf("ERROR\n");
+    printf("region 3:\n");
+    err = mms_print(my_ptr_3, 8);
+    if (err != 0 ) printf("ERROR\n");
+    printf("\n");
 
     printf("copying 4 bytes of region 3 (from the middle) into region 1 (in the middle)\n");
     err = mms_memcpy(my_ptr_1 + 2, my_ptr_3 + 1, 4);
     if (err == 103) printf("ERROR: invalid pointer\n");
+    printf("region 1:\n");
+    err = mms_print(my_ptr_1, 10);
+    if (err != 0 ) printf("ERROR\n");
+    printf("\n");
 
     printf("memcpy from invalid location into my_ptr_1, should error\n");
     err = mms_memcpy(my_ptr_1, my_ptr_1 - 12, 4);

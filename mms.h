@@ -26,17 +26,18 @@ struct mmap_table_entry {
     time_t last_reference;
 };
 
-struct regions {
+struct mem_map_table {
     int active_manager;
-    int allocated_size;
-    int boundary_size;
+    int mem_size;
+    int min_block_size;
     int current_clients;
     int max_requests;
     int total_entries;
-    struct mmap_table_entry mmap_table[MAX_REQUESTS];
+    struct mmap_table_entry mmap_regions[MAX_REQUESTS];
+    char mem_start[MAX_MEM_SIZE]; 
 };
 
-int shared_mem_init(char * executable_name);
+char *mms_init();
 int shared_mem_delete();
 
 char* mms_malloc(int size, int* error_code);

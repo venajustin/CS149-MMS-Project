@@ -10,22 +10,24 @@
 #include <semaphore.h>
 #include <stdio.h>
 
-static struct regions *memory;
+static struct mem_map_table *memory;
 static char *mem_region;
 static char *end_mem;
 static char prog_name[50]; 
+extern char *program_invocation_name;
 
-int shared_mem_init(char * executable_name) {
+char *mms_init(){
     // generate key from filepath and id
     key_t key = ftok(SHARED_FILEPATH, SHARED_ID);
     // create and/or get id of shared memory
-    int shmid = shmget(key, MAX_MEM_SIZE, 0666 | IPC_CREAT);
+    int shmid = shmget(key, sizeof(mem_map_table), 0666 | IPC_CREAT);
     // map the memory to local address space
-    memory = (struct regions*)shmat(shmid, (void*)0, 0);
-    mem_region = (char*) memory + sizeof(struct regions);
-    end_mem = mem_region + memory->allocated_size;
+    memory = (struct mem_map_table*)shmat(shmid, (void*)0, 0);
+    mem_region = memory->mem_start;
+    end_mem = mem_region + memory->mem_size;
 
-    strcpy(prog_name, executable_name);
+
+    strcpy(prog_name, program_invocation_name);
     if (strlen(prog_name) > 14) {
         strcpy(prog_name + 11, "...\0");
     }
@@ -35,9 +37,9 @@ int shared_mem_init(char * executable_name) {
         // unlink and destroy shared memory
         shmdt(memory);
         shmctl(shmid, IPC_RMID, NULL);
-        return 1;
+        return NULL;
     }
-    return 0;
+    return (char*) memory;
 } 
 
 // Allocate a piece of memory given the input size.
@@ -56,18 +58,18 @@ char* mms_malloc(int size, int* error_code) {
     }
     // expanding the allocated size up to the nearest multiple of boundary size
     int allocated_size = size;
-    if (allocated_size % memory->boundary_size != 0) {
-         allocated_size += memory->boundary_size - allocated_size % memory->boundary_size;
+    if (allocated_size % memory->min_block_size != 0) {
+         allocated_size += memory->min_block_size - allocated_size % memory->min_block_size;
     }
-    //if (allocated_size < memory->boundary_size) {
-    //    allocated_size = memory->boundary_size;
+    //if (allocated_size < memory->min_block_size) {
+    //    allocated_size = memory->min_block_size;
     //}
     
     // -1  = no valid region found
     int allocated_offset = -1;
 
 
-    struct mmap_table_entry *entry_ptr = memory->mmap_table;
+    struct mmap_table_entry *entry_ptr = memory->mmap_regions;
     struct mmap_table_entry *end_table = entry_ptr + memory->total_entries;
     // default location for a new entry is the end of the entry list
     struct mmap_table_entry *new_entry = end_table;
@@ -148,11 +150,11 @@ char* mms_malloc(int size, int* error_code) {
 int verify_ownership(int offset, int size, struct mmap_table_entry **table_entry) {
     pid_t this_pid = getpid();
     for (int i = 0; i < memory->total_entries; i++) {
-        struct mmap_table_entry entry = memory->mmap_table[i];
+        struct mmap_table_entry entry = memory->mmap_regions[i];
         if (entry.client_pid == this_pid) {
             if (offset >= entry.mem_offset && offset < entry.mem_offset + entry.request_size) {
                 if (offset + size <= entry.mem_offset + entry.request_size) {
-                    *table_entry = &(memory->mmap_table[i]);
+                    *table_entry = &(memory->mmap_regions[i]);
                     return 0;
                 } else {
                     return 101;
@@ -219,34 +221,37 @@ int mms_memcpy(char* dest_ptr, char* src_ptr, int size) {
 
     // src_ptr or dest_ptr can be from inside or outside of the memory region
     // if either is inside or overlapping the shared memory, it must be completely contained within an owned buffer
-    if ( src_ptr >= (char*) memory && src_ptr < mem_region + memory->allocated_size) {
+    if ( src_ptr >= (char*) memory && src_ptr < mem_region + MAX_MEM_SIZE) {
         err = verify_ownership(src_offset, size, &src_entry);
-        if (err == 102) {
+        if (err != 0) {
             err = 103; // because I reuse the same verify_ownership function that returns 102 as the error for out of region
         }
     } else {
         // a pointer could be from before the region and overlap it.
-        if ( src_ptr + size >= (char*) memory && src_ptr + size < mem_region + memory->allocated_size) {
+        if ( src_ptr + size >= (char*) memory && src_ptr + size < mem_region + MAX_MEM_SIZE) {
             err = 103; 
         }
     }
-
-    if ( dest_ptr >= (char*) memory && dest_ptr < mem_region + memory->allocated_size) {
-        err = verify_ownership(dest_offset, size, &dest_entry);
-        if (err == 102) {
-            err = 103; // because I reuse the same verify_ownership function that returns 102 as the error for out of region
-        }
-    } else {
-        // a pointer could be from before the region and overlap it.
-        if ( dest_ptr + size >= (char*) memory && dest_ptr + size < mem_region + memory->allocated_size) {
-            err = 103; 
+    
+    // if there was an error with src we skip checking destination
+    if (err == 0) {
+        if (  dest_ptr >= (char*) memory && dest_ptr < mem_region + MAX_MEM_SIZE) {
+            err = verify_ownership(dest_offset, size, &dest_entry);
+            if (err != 0) {
+                err = 103; // because I reuse the same verify_ownership function that returns 102 as the error for out of region
+            }
+        } else {
+            // a pointer could be from before the region and overlap it.
+            if ( dest_ptr + size >= (char*) memory && dest_ptr + size < mem_region + MAX_MEM_SIZE) {
+                err = 103; 
+            }
         }
     }
 
     /// OLD CODE
     /// ////////////////
     // verifying source buffer
-    // if ( src_ptr >= (char*) memory && src_ptr < mem_region + memory->allocated_size) {
+    // if ( src_ptr >= (char*) memory && src_ptr < mem_region + memory->mem_size) {
     //     err = 103;
     //     for (int i = 0; i < memory->total_entries;i++) {
     //         if (src_offset >= memory->mmap_table[i].mem_offset &&
@@ -308,14 +313,14 @@ int mms_print(char* src_ptr, int size) {
     // Following instructions from in class
     // An external pointer that does not fall within the shared memory will attempt to be printed as normal.
     // A pointer from within the region must be within the bounds of a region owned by the calling process
-    if ( src_ptr >= (char*) memory && src_ptr < mem_region + memory->allocated_size) {
+    if ( src_ptr >= (char*) memory && src_ptr < mem_region + MAX_MEM_SIZE) {
         err = verify_ownership(src_offset, size, &entry);
         if (err == 102) {
             err = 103;// because I reuse the same verify_ownership function that returns 102 as the error for out of region
         }
     } else {
         // a pointer could be from before the region and overlap it.
-        if ( src_ptr + size >= (char*) memory && src_ptr + size < mem_region + memory->allocated_size) {
+        if ( src_ptr + size >= (char*) memory && src_ptr + size < mem_region + MAX_MEM_SIZE) {
             err = 103;
         }
     }
@@ -330,7 +335,7 @@ int mms_print(char* src_ptr, int size) {
                 // this could be used to read private data so we have to check every time
                 if (entry == NULL) {
                     // this is an external region
-                    if (src_ptr >= (char*) memory && src_ptr < mem_region + memory->allocated_size) {
+                    if (src_ptr >= (char*) memory && src_ptr < mem_region + MAX_MEM_SIZE) {
                         err = 103;
                         break;
                     }
@@ -395,11 +400,12 @@ int mms_free ( char* mem_ptr ) {
 
 
     for (int i = 0; i < memory->total_entries; i++) {
-        struct mmap_table_entry curr_entry = memory->mmap_table[i];
+        struct mmap_table_entry curr_entry = memory->mmap_regions[i];
         if ( this_pid == curr_entry.client_pid ) {
             if ( target_offset == curr_entry.mem_offset ) {
                 
-                memory->mmap_table[i].client_pid = 0;
+                memory->mmap_regions[i].client_pid = 0;
+                memory->mmap_regions[i].last_reference = curr_time;
 
 
                 // timestamp, exectuable name, pid, function name, return value (error), memory pointer 

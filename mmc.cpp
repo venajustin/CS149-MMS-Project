@@ -17,6 +17,7 @@ const struct {
 
 int main(int argc, char **argv) {
 
+
     if (argc != 3) {
         printf("Invalid Arguments. \n");
         printf("Correct Usage: %s <physical> <boundary>\n", argv[0]);
@@ -28,8 +29,8 @@ int main(int argc, char **argv) {
         printf("Minimum Physical: 8 Bytes\n");
         return 1;
     }
-    if (psize > MAX_MEM_SIZE - sizeof(struct regions)) {
-        printf("Maximum Physical: %ld Bytes\n", MAX_MEM_SIZE - sizeof(struct regions));
+    if (psize > MAX_MEM_SIZE - sizeof(struct mem_map_table)) {
+        printf("Maximum Physical: %ld Bytes\n", (long) MAX_MEM_SIZE);
         return 1;
     }
 
@@ -42,8 +43,8 @@ int main(int argc, char **argv) {
         printf("Minimum Boundary: 8 Bytes\n");
         return 1;
     }
-    if (bsize > MAX_MEM_SIZE - sizeof(struct regions)) {
-        printf("Maximum Boundary: %ld Bytes\n", MAX_MEM_SIZE - sizeof(struct regions));
+    if (bsize > MAX_MEM_SIZE ) {
+        printf("Maximum Boundary: %ld Bytes\n", (long) MAX_MEM_SIZE );
         return 1;
     }
 
@@ -55,17 +56,17 @@ int main(int argc, char **argv) {
     key_t key = ftok(SHARED_FILEPATH, SHARED_ID);
 
     // creating shared memory and getting identifier
-    int shmid = shmget(key, MAX_MEM_SIZE, 0666 | IPC_CREAT);
+    int shmid = shmget(key, sizeof(mem_map_table), 0666 | IPC_CREAT);
 
     // attaching to shared memory
-    struct regions *memory = (struct regions*)shmat(shmid, (void*)0, 0);
+    struct mem_map_table *memory = (struct mem_map_table*)shmat(shmid, (void*)0, 0);
 
     // used to signify that a memory manager has initialized the shared region
     memory->active_manager = 1;
 
     // Input size info
-    memory->allocated_size = psize;
-    memory->boundary_size = bsize;
+    memory->mem_size = psize;
+    memory->min_block_size = bsize;
 
     // defaults
     memory->current_clients = 0;
@@ -74,13 +75,16 @@ int main(int argc, char **argv) {
     // The number of entries in the mapping table 
     memory->total_entries = 1;
     // the initial free space entry
-    struct mmap_table_entry *new_entry = memory->mmap_table;
+    struct mmap_table_entry *new_entry = memory->mmap_regions;
     new_entry->client_pid = 0;
     new_entry->actual_size = psize;
     new_entry->mem_offset = 0;    
+    time_t init_time;
+    time(&init_time);
+    new_entry->last_reference = init_time;
 
 
-    char* memory_region = (char*)memory + sizeof(struct regions);
+    char* memory_region = memory->mem_start;
     char* end_region = memory_region + psize;
 
 
@@ -156,18 +160,32 @@ int main(int argc, char **argv) {
             printf("PID          | Request Size | Actual Size | Client Address | Last Reference\n");
             printf("---------------------------------------------------------------------------\n");
             for (int i = 0 ; i < memory->total_entries; i++) {
-                struct mmap_table_entry entry = memory->mmap_table[i];
+                struct mmap_table_entry entry = memory->mmap_regions[i];
+    
+                // char *ascii_time = ctime(&entry.last_reference); 
+                struct tm *curr_time_info = localtime(&entry.last_reference);
+                char time_string[15];
+                strftime(time_string, 15, "%Y%m%d%H%M%S", curr_time_info);
+
+
                 if (entry.client_pid != 0) {
         
-                    char *ascii_time = ctime(&entry.last_reference); 
-
                     printf("%-12ld | %-12d | %-11d | %-12p | %s\n", 
                             entry.client_pid,
                             entry.request_size,
                             entry.actual_size,
                             entry.client_address,
-                            ascii_time);
+                            time_string);
+                } else {
+
+                    printf("%-12ld | %-12s | %-11d | %-14s | %s\n", 
+                            entry.client_pid,
+                            "N/A",
+                            entry.actual_size,
+                            "Free Memory",
+                            time_string);
                 }
+
             }
 
             if (strlen(&input[2]) > 0) {
@@ -177,18 +195,33 @@ int main(int argc, char **argv) {
                 fprintf(fptr,"PID          | Request Size | Actual Size | Client Address | Last Reference\n");
                 fprintf(fptr,"---------------------------------------------------------------------------\n");
                 for (int i = 0 ; i < memory->total_entries; i++) {
-                    struct mmap_table_entry entry = memory->mmap_table[i];
+                    struct mmap_table_entry entry = memory->mmap_regions[i];
+                    
+                    // char *ascii_time = ctime(&entry.last_reference); 
+                    struct tm *curr_time_info = localtime(&entry.last_reference);
+                    char time_string[15];
+                    strftime(time_string, 15, "%Y%m%d%H%M%S", curr_time_info);
+                     
                     if (entry.client_pid != 0) {
 
-                        char *ascii_time = ctime(&entry.last_reference); 
+                       
 
                         fprintf(fptr,"%-12ld | %-12d | %-11d | %-12p | %s\n", 
                                 entry.client_pid,
                                 entry.request_size,
                                 entry.actual_size,
                                 entry.client_address,
-                                ascii_time);
+                                time_string);
+                    } else {
+
+                        fprintf(fptr, "%-12ld | %-12s | %-11d | %-14s | %s\n", 
+                                entry.client_pid,
+                                "N/A",
+                                entry.actual_size,
+                                "Free Memory",
+                                time_string);
                     }
+
                 }
 
                 fclose(fptr);

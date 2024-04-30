@@ -6,7 +6,7 @@ int main(int argc, char **argv) {
 
 
     printf("Initializing shared memory...\n");
-    if (shared_mem_init(argv[0]) == 1) {
+    if (mms_init() == NULL) {
         printf("Error initializing shared memory, make sure manager is running\n");
         return 1;
     }
