@@ -130,19 +130,22 @@ char* mms_malloc(int size, int* error_code) {
         memory->current_clients++;
     }
 
+    *error_code = (int) err;
+
+    // logging to mms.log 
+
     // formatting timestamp for log
     struct tm *curr_time_info = localtime(&curr_time);
     char time_string[15];
     strftime(time_string, 15, "%Y%m%d%H%M%S", curr_time_info);
     
     //  logging operation
-    FILE *log_file = fopen("./mms.log", "a");
+    FILE *log_file = fopen(LOGFILE_NAME, "a");
     // timestamp, exectuable name, pid, function name, return value, parameters
     fprintf(log_file, " %14s | %14s | %14d | %s %p %d %d\n", 
             time_string, prog_name, this_pid, "mms_malloc", allocated_ptr, size, *error_code); 
     fclose(log_file);
 
-    *error_code = (int) err;
     return allocated_ptr; 
 }
 
@@ -194,7 +197,7 @@ int mms_memset(char* dest_ptr, char c, int size) {
     strftime(time_string, 15, "%Y%m%d%H%M%S", curr_time_info);
     
     //  logging operation
-    FILE *log_file = fopen("./mms.log", "a");
+    FILE *log_file = fopen(LOGFILE_NAME, "a");
     // timestamp, exectuable name, pid, function name, return value (error), dest, character, size 
     fprintf(log_file, " %14s | %14s | %14d | %s %d %p %c, %d\n", 
             time_string, prog_name, this_pid, "mms_memset", err, dest_ptr, c, size); 
@@ -290,7 +293,7 @@ int mms_memcpy(char* dest_ptr, char* src_ptr, int size) {
     strftime(time_string, 15, "%Y%m%d%H%M%S", curr_time_info);
     
     //  logging operation
-    FILE *log_file = fopen("./mms.log", "a");
+    FILE *log_file = fopen(LOGFILE_NAME, "a");
     // timestamp, exectuable name, pid, function name, return value (error), dest, src, size 
     fprintf(log_file, " %14s | %14s | %14d | %s %d %p %p, %d\n", 
             time_string, prog_name, this_pid, "mms_memcpy", err, dest_ptr, src_ptr, size); 
@@ -357,6 +360,8 @@ int mms_print(char* src_ptr, int size) {
 
 
     // instructions in class said that logging "read only functions" is not nessessary
+    // OLD CODE for logging operation 
+    // //////////////////
     // pid_t this_pid = getpid();
     // time_t curr_time;
     // time(&curr_time);
@@ -366,12 +371,12 @@ int mms_print(char* src_ptr, int size) {
     // strftime(time_string, 15, "%Y%m%d%H%M%S", curr_time_info);
     
     ////   logging operation
-    // FILE *log_file = fopen("./mms.log", "a");
+    // FILE *log_file = fopen(LOGFILE_NAME, "a");
     // timestamp, exectuable name, pid, function name, return value (error), src, size 
     // fprintf(log_file, " %14s | %14s | %14d | %s %d %p, %d\n", 
     //         time_string, prog_name, this_pid, "mms_print", err, src_ptr, size); 
     // fclose(log_file);
-
+    /////////////////////
 
 
 
@@ -396,7 +401,7 @@ int mms_free ( char* mem_ptr ) {
     strftime(time_string, 15, "%Y%m%d%H%M%S", curr_time_info);
     
     //  logging operation
-    FILE *log_file = fopen("./mms.log", "a");
+    FILE *log_file = fopen(LOGFILE_NAME, "a");
 
 
     for (int i = 0; i < memory->total_entries; i++) {

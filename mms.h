@@ -7,6 +7,7 @@
 #define MAX_REQUESTS ( 50 )
 #define SHARED_ID ('M')
 #define SHARED_FILEPATH "/shared_memory_temp_file"
+#define LOGFILE_NAME "./mms.log"
 
 enum err_code{
     NO_ERROR = 0,
