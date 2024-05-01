@@ -16,6 +16,8 @@ int main(int argc, char **argv) {
     char *regions[10];
 
     printf("allocating a region of size 10\n");
+   
+
     regions[0] = mms_malloc(10, &err);
      if (err !=0 )
         printf("error malloc");
@@ -27,6 +29,9 @@ int main(int argc, char **argv) {
         printf("ERROR copying\n");
     }
 
+     printf("Filling region with 0x68\n");
+    err = mms_memset(regions[0], 0x68, 10);
+    if (err != 0) printf("ERROR\n");
 
     printf("reading my buffer\n");
     err = mms_print(regions[0], 10);

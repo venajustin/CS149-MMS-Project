@@ -83,7 +83,7 @@ char* mms_malloc(int size, int* error_code) {
                 allocated_offset = entry_ptr->mem_offset;
 
                
-                if (entry_ptr->actual_size == 0) {
+                if (entry_ptr->actual_size - allocated_size == 0) {
                     
                     // the hole has been completely filled
                     // this entry can be used to hold the new region
