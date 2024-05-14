@@ -92,6 +92,13 @@ int main(int argc, char **argv) {
     FILE * mms_log = fopen("./mms.log", "r");
     if (mms_log == NULL) {
         mms_log = fopen("./mms.log", "w");
+        fprintf(mms_log, "Memory Management System Log File\n\n");
+        fprintf(mms_log, "Format of parameter log for each operation:\n");
+        fprintf(mms_log, "    mms_log <returned pointer> <requested size> <error code>\n");
+        fprintf(mms_log, "    mms_memset <error code> <destination> <character> <requested size>\n");
+        fprintf(mms_log, "    mms_memcpy <error code> <destination> <source> <requested size>\n");
+        fprintf(mms_log, "    mms_free <error code> <region>\n\n\n");
+
         fprintf(mms_log, "   Timestamp    |  Program Name  |   Process ID   |   Operation\n");
         fclose(mms_log);
     }

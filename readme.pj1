@@ -20,11 +20,10 @@ Assumptions:
   - Calling "mms_free" on a pointer within an allocated region will return error 
 
 Notes:
-  - given tests do not make sence or test project specifications
-      - my code does not pass these tests as they try to mms_memcpy into regions that have not been allocated
+  - I believe my code passes the given tests, they are not clear on what the expected output should be
   - To test my code:
       - mms_init() will return a pointer, or NULL if an mmc console has not been started
       - the pointer returned is to the start of the shared memory region
       - it should not be used and is only for debugging purposes
-
+  
 
