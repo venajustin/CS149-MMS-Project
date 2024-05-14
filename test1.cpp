@@ -228,9 +228,16 @@ int main(int argc, char **argv) {
     err = mms_memcpy(buff, my_ptr_1, 10);
     if (err == 103) printf("ERROR: invalid pointer\n");
 
+    printf("buffer:\n");
+    for (int i = 0; i < 8; i++) {
+        printf("%x ", buff[i]);
+    }
+    printf("\n");
+
+    
     printf("copying 8 bytes of buffer into region 3\n");
     err = mms_memcpy(my_ptr_3, buff, 8);
-    if (err == 103) printf("ERROR: invalid pointer\n");
+    if (err != 0) printf("ERROR: invalid pointer\n");
     printf("region 3:\n");
     err = mms_print(my_ptr_3, 8);
     if (err != 0 ) printf("ERROR\n");
