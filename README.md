@@ -1,4 +1,4 @@
-#CS149 Memory Management System Project
+# CS149 Memory Management System Project
 As our largest project in my Operating Systems class we were assigned the task of creating a memory management system. This emulates something similar to malloc/free/memcopy in C.
 
 Memory is allocated from a shared memory region that can be accessed by other programs including the header file.
